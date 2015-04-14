@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 Raymond Hill
+    uBlock - a browser extension to block requests.
+    Copyright (C) 2014-2015 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -475,7 +475,8 @@ PageStore.prototype.init = function(tabId) {
     this.netFilteringReadTime = 0;
     this.perLoadBlockedRequestCount = 0;
     this.perLoadAllowedRequestCount = 0;
-    this.hiddenElementCount = ''; // Empty string means "unknown"
+    this.liveCosmeticFilteredCount = 0;
+    this.liveCosmeticFilters = [];
     this.netFilteringCache = NetFilteringResultCache.factory();
 
     // Support `elemhide` filter option. Called at this point so the required

@@ -146,7 +146,7 @@ body.off #switch .fa {
     }
 #extraTools > span > span.badge {
     color: #666;
-    bottom: 0;
+    top: -2px;
     font: 10.5px sans-serif;
     position: absolute;
     }

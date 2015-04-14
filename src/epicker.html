@@ -29,6 +29,9 @@ button {
     background-color: #ccc;
     cursor: pointer;
 }
+button:first-of-type {
+    margin-left: 0;
+}
 button:hover {
     background-color: #eee;
 }
@@ -36,40 +39,42 @@ button:disabled {
     color: #999;
     background-color: #ccc;
 }
+#exmode {
+    border: 1px solid #800;
+    background-color: rgba(255,31,31,0.25);
+}
+#exmode.on {
+    border: 1px solid #080;
+    background-color: rgba(31,255,31,0.25);
+}
 #create:not(:disabled) {
     background-color: #ffdca8;
 }
 section {
-    border: 1px solid #ccc;
+    border: 0;
     box-sizing: border-box;
     display: inline-block;
-    height: 8em;
     position: relative;
     width: 100%;
 }
-textarea {
+section > textarea {
     background-color: #fff;
-    border: 0;
+    border: 1px solid #ccc;
     box-sizing: border-box;
     font: 11px monospace;
-    height: 100%;
+    height: 6em;
     overflow: hidden;
     padding: 0;
     resize: none;
     width: 100%;
 }
-div {
-    bottom: 1px;
+section > div {
     direction: ltr;
-    opacity: 1;
+    margin: 2px 0;
+}
+section > div > span:last-of-type {
     position: absolute;
-    right: 1px;
-}
-textarea:focus + div {
-    opacity: 0.2;
-}
-textarea:focus + div:hover {
-    opacity: 1;
+    right: 0;
 }
 ul {
     padding: 0;
@@ -77,8 +82,9 @@ ul {
     text-align: left;
     overflow: hidden;
 }
-body > ul > li {
-    padding-top: 3px;
+aside > ul {
+    height: 16em;
+    overflow-y: auto;
 }
 ul > li > span:nth-of-type(1) {
     font-weight: bold;
@@ -123,6 +129,10 @@ svg > path + path {
     stroke-width: 0.5px;
     fill: rgba(255,31,31,0.25);
 }
+svg.exmode > path + path {
+    stroke: #0F0;
+    fill: rgba(31,255,31,0.25);
+}
 aside {
     background-color: rgba(255,255,255,0.9);
     bottom: 4px;
@@ -147,7 +157,12 @@ body.paused > aside:hover {
 <aside>
 <section>
     <textarea lang="en" dir="ltr" spellcheck="false"></textarea>
-    <div><button id="create" type="button" disabled="disabled">{{create}}</button><button id="pick" type="button">{{pick}}</button><button id="quit" type="button">{{quit}}</button></div>
+    <div><!--
+    --><span><button id="create" type="button" disabled="disabled">{{create}}</button><!--
+    --><button id="pick" type="button">{{pick}}</button><!--
+    --><button id="quit" type="button">{{quit}}</button></span><!--
+    --><span><button id="exmode" type="button">&emsp;</button></span><!--
+    --></div>
 </section>
 <ul>
     <li id="netFilters">

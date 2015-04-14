@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 Raymond Hill
+    uBlock - a browser extension to block requests.
+    Copyright (C) 2014-2015 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -278,7 +278,42 @@ var matchWhitelistDirective = function(url, hostname, directive) {
 
 µBlock.elementPickerExec = function(tabId, targetElement) {
     this.epickerTarget = targetElement || '';
-    vAPI.tabs.injectScript(tabId, { file: 'js/element-picker.js' });
+
+    // Ensure live cosmetic data will be ready when the picker needs it.
+    var onReady = function() {
+        vAPI.tabs.injectScript(tabId, { file: 'js/epicker.js' });
+    };
+
+    this.surveyCosmeticFiltering(tabId, onReady);
+};
+
+/******************************************************************************/
+
+µBlock.surveyCosmeticFiltering = function(tabId, callback) {
+    callback = callback || this.noopFunc;
+    vAPI.tabs.injectScript(tabId, { file: 'js/cosmetic-survey.js' }, callback);
+};
+
+/******************************************************************************/
+
+µBlock.revealCosmeticFiltering = function(tabId, reveal, deep, callback) {
+    callback = callback || this.noopFunc;
+
+    var pageStore = this.pageStoreFromTabId(tabId);
+    if ( !pageStore ) {
+        callback();
+        return;
+    }
+    // A user could have changed the `noCosmeticFilter` meanwhile.
+    if ( reveal === 'off' && this.hnSwitches.evaluateZ('noCosmeticFiltering', pageStore.rootHostname) ) {
+        callback();
+        return;
+    }
+
+    vAPI.tabs.injectScript(tabId, {
+        file: 'js/cosmetic-' + (reveal ? 'off' : 'on') + '.js',
+        allFrames: deep
+    }, callback);
 };
 
 /******************************************************************************/
@@ -334,17 +369,6 @@ var matchWhitelistDirective = function(url, hostname, directive) {
 
     // Whatever else
     // ...
-};
-
-/******************************************************************************/
-
-µBlock.getHiddenElementCount = function(tabId, callback) {
-    callback = callback || this.noopFunc;
-    if ( vAPI.isBehindTheSceneTabId(tabId) ) {
-        callback();
-        return;
-    }
-    vAPI.tabs.injectScript(tabId, { file: 'js/cosmetic-count.js' }, callback);
 };
 
 /******************************************************************************/

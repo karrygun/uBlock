@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 Raymond Hill
+    uBlock - a browser extension to block requests.
+    Copyright (C) 2014-2015 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -131,7 +131,10 @@ if ( pickerRoot ) {
     return;
 }
 
-var localMessager = vAPI.messaging.channel('element-picker.js');
+var localMessager = vAPI.messaging.channel('epicker.js');
+
+// Blocking mode by default
+var exceptionMode = false;
 
 var svgOcean = null;
 var svgIslands = null;
@@ -143,6 +146,8 @@ var netFilterCandidates = [];
 var cosmeticFilterCandidates = [];
 
 var targetElements = [];
+var liveCosmeticFilters = [];
+var reCosmeticFilterPrefix = /^#@?#/;
 
 var lastNetFilterSession = window.location.host + window.location.pathname;
 var lastNetFilterHostname = '';
@@ -453,17 +458,27 @@ var cosmeticFilterFromElement = function(elem, out) {
 
 /******************************************************************************/
 
-var filtersFromElement = function(elem) {
+var filtersFromElement = function(target) {
+    var elem, i;
+
     netFilterCandidates.length = 0;
     cosmeticFilterCandidates.length = 0;
+
+    elem = target;
     while ( elem && elem !== document.body ) {
         netFilterFromElement(elem, netFilterCandidates);
+        elem = elem.parentNode;
+    }
+
+    elem = target;
+    while ( elem && elem !== document.body ) {
         cosmeticFilterFromElement(elem, cosmeticFilterCandidates);
         elem = elem.parentNode;
     }
+
     // The body tag is needed as anchor only when the immediate child
     // uses`nth-of-type`.
-    var i = cosmeticFilterCandidates.length;
+    i = cosmeticFilterCandidates.length;
     if ( i !== 0 && cosmeticFilterCandidates[i-1].indexOf(':nth-of-type(') !== -1 ) {
         cosmeticFilterCandidates.push('##body');
     }
@@ -485,9 +500,9 @@ var elementsFromFilter = function(filter) {
     // One idea is to normalize all a[href] on the page, but for now I will
     // wait and see, as I prefer to refrain from tampering with the page
     // content if I can avoid it.
-    if ( filter.lastIndexOf('##', 0) === 0 ) {
+    if ( reCosmeticFilterPrefix.test(filter) ) {
         try {
-            out = document.querySelectorAll(filter.slice(2));
+            out = document.querySelectorAll(filter.replace(reCosmeticFilterPrefix, ''));
         }
         catch (e) {
         }
@@ -543,8 +558,6 @@ var elementsFromFilter = function(filter) {
     return out;
 };
 
-// https://www.youtube.com/watch?v=YI2XuIOW3gM
-
 /******************************************************************************/
 
 var userFilterFromCandidate = function() {
@@ -556,7 +569,7 @@ var userFilterFromCandidate = function() {
     }
 
     // Cosmetic filter?
-    if ( v.lastIndexOf('##', 0) === 0 ) {
+    if ( reCosmeticFilterPrefix.test(v) ) {
         return window.location.hostname + v;
     }
 
@@ -574,7 +587,7 @@ var userFilterFromCandidate = function() {
 var onCandidateChanged = function() {
     var elems = elementsFromFilter(taCandidate.value);
     dialog.querySelector('#create').disabled = elems.length === 0;
-    highlightElements(elems);
+    highlightElements(elems, true);
 };
 
 /******************************************************************************/
@@ -589,7 +602,7 @@ var candidateFromFilterChoice = function(filterChoice) {
     }
 
     // For net filters there no such thing as a path
-    if ( filterChoice.type === 'net' || filterChoice.modifier ) {
+    if ( filterChoice.type === 'net' || filterChoice.modifier || exceptionMode ) {
         return filter;
     }
 
@@ -610,7 +623,7 @@ var candidateFromFilterChoice = function(filterChoice) {
 
 var filterChoiceFromEvent = function(ev) {
     var li = ev.target;
-    var isNetFilter = li.textContent.slice(0, 2) !== '##';
+    var isNetFilter = reCosmeticFilterPrefix.test(li.textContent) === false;
     var r = {
         type: isNetFilter ? 'net' : 'cosmetic',
         filters: isNetFilter ? netFilterCandidates : cosmeticFilterCandidates,
@@ -623,6 +636,83 @@ var filterChoiceFromEvent = function(ev) {
     }
     return r;
 };
+
+/******************************************************************************/
+
+var toggleExceptionMode = (function() {
+    var savedNetCandidates = [];
+    var savedCosmeticCandidates = [];
+    var savedTextArea0 = '';
+    var savedTextArea1 = '';
+
+    var toggleOn = function(callback) {
+        savedNetCandidates = netFilterCandidates;
+        netFilterCandidates = [];
+        savedCosmeticCandidates = cosmeticFilterCandidates;
+        cosmeticFilterCandidates = [];
+        savedTextArea0 = taCandidate.value;
+        taCandidate.value = savedTextArea1;
+        var seen = {};
+        var i = liveCosmeticFilters.length;
+        var selector, elems;
+        while ( i-- ) {
+            selector = liveCosmeticFilters[i];
+            if ( seen.hasOwnProperty(selector) ) {
+                continue;
+            }
+            seen[selector] = true;
+            elems = document.querySelectorAll(selector);
+            if ( elems.length === 0 ) {
+                continue;
+            }
+            cosmeticFilterCandidates.push('#@#' + selector);
+        }
+        cosmeticFilterCandidates.sort();
+        localMessager.send({ what: 'enterExceptionMode' }, callback);
+    };
+
+    var toggleOff = function(callback) {
+        netFilterCandidates = savedNetCandidates;
+        cosmeticFilterCandidates = savedCosmeticCandidates;
+        savedTextArea1 = taCandidate.value;
+        taCandidate.value = savedTextArea0;
+        localMessager.send({ what: 'leaveExceptionMode' }, callback);
+    };
+
+    return function(newState, callback) {
+        var oldState = exceptionMode;
+        if ( newState === undefined ) {
+            newState = !oldState;
+        }
+        if ( newState === oldState ) {
+            callback();
+            return;
+        }
+        exceptionMode = newState;
+
+        // For a visually clean mode switch
+        highlightElements([], true);
+
+        pickerRoot.contentDocument.getElementById('exmode').classList.toggle('on', exceptionMode);
+        svgRoot.classList.toggle('exmode', exceptionMode);
+
+        var onRevealDone = function() {
+            onCandidateChanged();
+            if ( typeof callback === 'function' ) {
+                callback();
+            }
+        };
+
+        if ( exceptionMode ) {
+            toggleOn(onRevealDone);
+        } else {
+            toggleOff(onRevealDone);
+        }
+
+        dialog.querySelector('#pick').disabled = exceptionMode;
+        dialogFilterListsFromCandidates();
+    };
+})();
 
 /******************************************************************************/
 
@@ -652,6 +742,10 @@ var onDialogClicked = function(ev) {
         stopPicker();
     }
 
+    else if ( ev.target.id === 'exmode' ) {
+        toggleExceptionMode();
+    }
+
     else if ( ev.target.parentNode.classList.contains('changeFilter') ) {
         taCandidate.value = candidateFromFilterChoice(filterChoiceFromEvent(ev));
         onCandidateChanged();
@@ -674,11 +768,7 @@ var removeAllChildren = function(parent) {
 // TODO: for convenience I could provide a small set of net filters instead
 // of just a single one. Truncating the right-most part of the path etc.
 
-var showDialog = function(options) {
-    pausePicker();
-
-    options = options || {};
-
+var dialogFilterListsFromCandidates = function() {
     // Create lists of candidate filters
     var populate = function(src, des) {
         var root = dialog.querySelector(des);
@@ -696,8 +786,21 @@ var showDialog = function(options) {
     populate(netFilterCandidates, '#netFilters');
     populate(cosmeticFilterCandidates, '#cosmeticFilters');
 
-    dialog.querySelector('ul').style.display = netFilterCandidates.length || cosmeticFilterCandidates.length ? '' : 'none';
     dialog.querySelector('#create').disabled = true;
+};
+
+/******************************************************************************/
+
+// TODO: for convenience I could provide a small set of net filters instead
+// of just a single one. Truncating the right-most part of the path etc.
+
+var showDialog = function(options) {
+    pausePicker();
+
+    options = options || {};
+
+    // Create lists of candidate filters
+    dialogFilterListsFromCandidates();
 
     // Auto-select a candidate filter
     var filterChoice = {
@@ -743,6 +846,11 @@ var onSvgHovered = function(ev) {
 /******************************************************************************/
 
 var onSvgClicked = function(ev) {
+    // It makes no sense to pick in exception mode.
+    if ( exceptionMode ) {
+        return;
+    }
+
     // https://github.com/chrisaljoudi/uBlock/issues/810#issuecomment-74600694
     // Unpause picker if user click outside dialog
     if ( dialog.parentNode.classList.contains('paused') ) {
@@ -811,21 +919,28 @@ var stopPicker = function() {
         return;
     }
 
-    window.removeEventListener('scroll', onScrolled, true);
-    pickerRoot.contentWindow.removeEventListener('keydown', onKeyPressed, true);
-    taCandidate.removeEventListener('input', onCandidateChanged);
-    dialog.removeEventListener('click', onDialogClicked);
-    svgListening(false);
-    svgRoot.removeEventListener('click', onSvgClicked);
-    pickerRoot.parentNode.removeChild(pickerRoot);
-    pickerRoot.onload = null;
-    pickerRoot =
-    dialog =
-    svgRoot = svgOcean = svgIslands =
-    taCandidate = null;
-    localMessager.close();
+    // We have to wait that the toggling of the exception mode is complete: it
+    // sends roundtrip messages to the background process, so we can't close
+    // the messager before completion.
+    var onExceptionModeCancelled = function() {
+        window.removeEventListener('scroll', onScrolled, true);
+        pickerRoot.contentWindow.removeEventListener('keydown', onKeyPressed, true);
+        taCandidate.removeEventListener('input', onCandidateChanged);
+        dialog.removeEventListener('click', onDialogClicked);
+        svgListening(false);
+        svgRoot.removeEventListener('click', onSvgClicked);
+        pickerRoot.parentNode.removeChild(pickerRoot);
+        pickerRoot.onload = null;
+        pickerRoot =
+        dialog =
+        svgRoot = svgOcean = svgIslands =
+        taCandidate = null;
+        localMessager.close();
 
-    window.focus();
+        window.focus();
+    };
+
+    toggleExceptionMode(false, onExceptionModeCancelled);
 };
 
 /******************************************************************************/
@@ -867,6 +982,12 @@ var startPicker = function(details) {
     if ( eprom.lastNetFilterSession === lastNetFilterSession ) {
         lastNetFilterHostname = eprom.lastNetFilterHostname || '';
         lastNetFilterUnion = eprom.lastNetFilterUnion || '';
+    }
+
+    // Live cosmetic filters: to be used when the picker is in exception mode.
+    liveCosmeticFilters = details.liveCosmeticFilters;
+    if ( liveCosmeticFilters.length === 0 ) {
+        dialog.querySelector('#exmode').style.display = 'none';
     }
 
     // Auto-select a specific target, if any, and if possible
@@ -948,14 +1069,10 @@ pickerRoot.style.cssText = [
 ].join('!important; ');
 
 pickerRoot.onload = function() {
-    localMessager.send({ what: 'elementPickerArguments' }, startPicker);
+    localMessager.send({ what: 'getElementPickerData' }, startPicker);
 };
 
 document.documentElement.appendChild(pickerRoot);
-
-/******************************************************************************/
-
-// https://www.youtube.com/watch?v=sociXdKnyr8
 
 /******************************************************************************/
 

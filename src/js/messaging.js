@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 Raymond Hill
+    uBlock - a browser extension to block requests.
+    Copyright (C) 2014-2015 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -286,7 +286,7 @@ var getTargetTabId = function(tab) {
 
 var getPopupDataLazy = function(tabId, callback) {
     var r = {
-        hiddenElementCount: ''
+        liveCosmeticFilterCount: ''
     };
     var pageStore = µb.pageStoreFromTabId(tabId);
 
@@ -295,8 +295,8 @@ var getPopupDataLazy = function(tabId, callback) {
         return;
     }
 
-    µb.getHiddenElementCount(tabId, function() {
-        r.hiddenElementCount = pageStore.hiddenElementCount;
+    µb.surveyCosmeticFiltering(tabId, function() {
+        r.liveCosmeticFilteredCount = pageStore.liveCosmeticFilteredCount;
         callback(r);
     });
 };
@@ -571,9 +571,10 @@ var onMessage = function(request, sender, callback) {
     }
 
     switch ( request.what ) {
-        case 'hiddenElementCount':
+        case 'liveCosmeticFilteringData':
             if ( pageStore ) {
-                pageStore.hiddenElementCount = request.count;
+                pageStore.liveCosmeticFilteredCount = request.filteredCount;
+                pageStore.liveCosmeticFilters = request.selectors;
             }
             break;
 
@@ -593,7 +594,7 @@ vAPI.messaging.listen('cosmetic-*.js', onMessage);
 /******************************************************************************/
 /******************************************************************************/
 
-// element-picker.js
+// epicker.js
 
 (function() {
 
@@ -605,41 +606,65 @@ var µb = µBlock;
 
 /******************************************************************************/
 
+var onPickerHTMLDocumentReady = function(tabId, xhr, callback) {
+    xhr.onload = null;
+
+    var pageStore = µb.pageStoreFromTabId(tabId) || {};
+
+    var i18n = {
+        bidi_dir: document.body.getAttribute('dir'),
+        create: vAPI.i18n('pickerCreate'),
+        pick: vAPI.i18n('pickerPick'),
+        quit: vAPI.i18n('pickerQuit'),
+        netFilters: vAPI.i18n('pickerNetFilters'),
+        cosmeticFilters: vAPI.i18n('pickerCosmeticFilters'),
+        cosmeticFiltersHint: vAPI.i18n('pickerCosmeticFiltersHint')
+    };
+    var reStrings = /\{\{(\w+)\}\}/g;
+    var replacer = function(a0, string) {
+        return i18n[string];
+    };
+
+    callback({
+        frameContent: xhr.responseText.replace(reStrings, replacer),
+        target: µb.contextMenuTarget,
+        clientX: µb.contextMenuClientX,
+        clientY: µb.contextMenuClientY,
+        eprom: µb.epickerEprom,
+        liveCosmeticFilters: pageStore.liveCosmeticFilters
+        
+    });
+
+    µb.contextMenuTarget = '';
+    µb.contextMenuClientX = -1;
+    µb.contextMenuClientY = -1;
+};
+
+/******************************************************************************/
+
 var onMessage = function(request, sender, callback) {
+    var tabId;
+    if ( sender && sender.tab ) {
+        tabId = sender.tab.id;
+    }
+
     // Async
     switch ( request.what ) {
-        case 'elementPickerArguments':
+        case 'enterExceptionMode':
+            µb.revealCosmeticFiltering(tabId, true, false, callback);
+            return;
+
+        case 'leaveExceptionMode':
+            µb.revealCosmeticFiltering(tabId, false, false, callback);
+            return;
+
+        case 'getElementPickerData':
             var xhr = new XMLHttpRequest();
             xhr.open('GET', 'epicker.html', true);
             xhr.overrideMimeType('text/html;charset=utf-8');
             xhr.responseType = 'text';
             xhr.onload = function() {
-                this.onload = null;
-                var i18n = {
-                    bidi_dir: document.body.getAttribute('dir'),
-                    create: vAPI.i18n('pickerCreate'),
-                    pick: vAPI.i18n('pickerPick'),
-                    quit: vAPI.i18n('pickerQuit'),
-                    netFilters: vAPI.i18n('pickerNetFilters'),
-                    cosmeticFilters: vAPI.i18n('pickerCosmeticFilters'),
-                    cosmeticFiltersHint: vAPI.i18n('pickerCosmeticFiltersHint')
-                };
-                var reStrings = /\{\{(\w+)\}\}/g;
-                var replacer = function(a0, string) {
-                    return i18n[string];
-                };
-
-                callback({
-                    frameContent: this.responseText.replace(reStrings, replacer),
-                    target: µb.contextMenuTarget,
-                    clientX: µb.contextMenuClientX,
-                    clientY: µb.contextMenuClientY,
-                    eprom: µb.epickerEprom
-                });
-
-                µb.contextMenuTarget = '';
-                µb.contextMenuClientX = -1;
-                µb.contextMenuClientY = -1;
+                onPickerHTMLDocumentReady(tabId, this, callback);
             };
             xhr.send();
             return;
@@ -667,7 +692,7 @@ var onMessage = function(request, sender, callback) {
     callback(response);
 };
 
-vAPI.messaging.listen('element-picker.js', onMessage);
+vAPI.messaging.listen('epicker.js', onMessage);
 
 /******************************************************************************/
 

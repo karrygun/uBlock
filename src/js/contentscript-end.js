@@ -385,16 +385,16 @@ var uBlockCollapser = (function() {
     // - Injecting a style tag
 
     var addStyleTag = function(selectors) {
-        var selectorStr = selectors.toString();
+        var text = Array.isArray(selectors) ? selectors.join(',\n') : selectors;
         var style = document.createElement('style');
         // The linefeed before the style block is very important: do no remove!
-        style.appendChild(document.createTextNode(selectorStr + '\n{display:none !important;}'));
+        style.appendChild(document.createTextNode(text + '\n{display:none !important;}'));
         var parent = document.body || document.documentElement;
         if ( parent ) {
             parent.appendChild(style);
             vAPI.styles.push(style);
         }
-        hideElements(selectorStr);
+        hideElements(text);
         messager.send({
             what: 'injectedSelectors',
             type: 'cosmetic',
