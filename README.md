@@ -1,4 +1,16 @@
-**Important note:** This is a fork of the [new official repo](https://github.com/chrisaljoudi/uBlock). Although both projects are essentially the same as of 0.9.3.0, they will probably start to diverge as time goes. I consider uBlock₀ here to be feature-complete. I will keep maintaining the project here though so as to ensure it works just fine, i.e. bug fixing for the most part.
+**Important note:** This is a fork of the [new official repo](https://github.com/chrisaljoudi/uBlock). Although both projects are essentially the same as of 0.9.3.0, they will probably start to diverge as time goes (update: they already [started to diverge](https://github.com/chrisaljoudi/uBlock/issues/1259) feature-wise).
+
+I consider uBlock₀ here to be mature feature-wise.
+
+To stop adding features at a fast pace does not make a software automatically obsolete. If you believe so, find out how many features were added to Adblock Plus in the last months. New features were added almost every week for months to uBlock.
+
+I will keep maintaining the project here though so as to ensure it works just fine, i.e. bug fixing for the most part. Stability and reliability has priority at this point.
+
+I may add features whenever I feel the need to do so -- I use the extension myself, so if I feel it definitely needs something more, I will just go ahead and add it.
+
+The filter lists will continue to update themselves at regular interval, as usual.
+
+To the recurring question: "Why did you handover the original project?", [answer is here](https://github.com/gorhill/uBlock/issues/38#issuecomment-91871802).
 
 *** 
 
@@ -8,7 +20,7 @@
       height="38"
       width="38">
 </sub>
-uBlock₀
+uBlock Origin
 </h1>
 <p align="center">
 <sup> <!-- Pronounciation -->
@@ -44,7 +56,7 @@ uBlock₀
 
 ## Philosophy
 
-uBlock₀ is not an *ad blocker*; it's a general-purpose blocker. uBlock₀ blocks ads through its support of the [Adblock Plus filter syntax](https://adblockplus.org/en/filters). uBlock₀ [extends](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) the syntax and is designed to work with custom rules and filters.
+uBlock Origin (or uBlock₀) is not an *ad blocker*; it's a general-purpose blocker. uBlock₀ blocks ads through its support of the [Adblock Plus filter syntax](https://adblockplus.org/en/filters). uBlock₀ [extends](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) the syntax and is designed to work with custom rules and filters.
 
 That said, it's important to note that using a blocker is **NOT** [theft](https://twitter.com/LeaVerou/status/518154828166725632). Don't fall for this creepy idea. The _ultimate_ logical consequence of `blocking = theft` is the criminalisation of the inalienable right to privacy.
 

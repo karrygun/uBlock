@@ -30,13 +30,13 @@ a {
 #gotoPrefs {
     background-color: #444;
     border: 0;
-    color: white;
+    color: #bbb;
     cursor: pointer;
     display: block;
-    font-size: 13px;
-    font-weight: bold;
+    font-size: 12px;
+    line-height: 12px;
     margin: 0;
-    padding: 2px;
+    padding: 3px 0;
     text-align: center;
     }
 #version {
@@ -107,7 +107,8 @@ body.off #switch .fa {
     font-size: 20px;
     }
 .statName {
-    color: #666;
+    color: #888;
+    font-size: small;
     margin: 1em 0.2em 0.2em 0.2em;
     text-align: center;
     }
@@ -167,6 +168,9 @@ body[dir="rtl"] #extraTools > span > span.badge {
     }
 #extraTools > span.on > span:last-of-type:after {
     content: '\2715';
+    }
+#extraTools > span:hover {
+    color: #444;
     }
 
 body.advancedUser h2 {

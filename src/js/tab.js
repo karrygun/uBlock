@@ -478,6 +478,9 @@ vAPI.tabs.onPopup = function(details) {
     }
 
     // Blocked
+    if ( µb.userSettings.showIconBadge ) {
+        µb.updateBadgeAsync(details.openerTabId);
+    }
 
     // It is a popup, block and remove the tab.
     µb.unbindTabFromPageStats(details.targetTabId);
