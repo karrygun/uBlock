@@ -729,7 +729,18 @@ var onDialogClicked = function(ev) {
                 what: 'createUserFilter',
                 filters: '! ' + d.toLocaleString() + ' ' + window.location.href + '\n' + filter,
             });
-            removeElements(elementsFromFilter(taCandidate.value));
+            // Do not remove elements in exception mode
+            // TODO: a better solution would be to "reset" the contentscript
+            // scripts, so that cosmetic filtering can be completely re-applied
+            // with up to date filter lists. This would remove the need to
+            // have a local removeElements().
+            // Something to try: inject a `cosmetic-reset.js` script, which
+            // completely wipeout clean live cosmetic filtering data on the
+            // page, then re-inject `contentscript-start.js` and
+            // `contentscript-end.js`.
+            if ( !exceptionMode ) {
+                removeElements(elementsFromFilter(taCandidate.value));
+            }
             stopPicker();
         }
     }
